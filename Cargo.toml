@@ -1,0 +1,17 @@
+[package]
+name = "rinse"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "~1.0"
+asearch = "~0.1"
+base64 = "~0.13"
+edit-distance = "~2.1"
+eframe = { version = "~0.16", default-features = false, features = ["default_fonts", "egui_glow"] }
+image = "~0.23"
+mpd = "0.0.12"
+serde = "~1.0"
+serde_yaml = "~0.8"
