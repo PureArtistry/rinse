@@ -41,22 +41,18 @@ pub struct Data {
 }
 
 pub trait Setup {
-    fn setup(stuff: (Client<TcpStream>, Status)) -> Self;
+    fn setup(stuff: (Client<TcpStream>, Status, String)) -> Self;
 }
 
 impl Setup for Rinse {
-    fn setup(stuff: (Client<TcpStream>, Status)) -> Self {
-        let (mut mpc, status) = stuff;
-        let music_dir = var("XDG_MUSIC_DIR").expect(
-            "error: music directory can't be obtained from mpd!\nyou need to set your XDG_MUSIC_DIR \
-             environment variable to match the value of music_directory from your mpd.conf"
-        );
-        let queue = mpc.queue().unwrap();
+    fn setup(stuff: (Client<TcpStream>, Status, String)) -> Self {
+        let (mut mpc, status, music_dir) = stuff;
 
         let current_pos = status.song.unwrap().pos as usize;
         let elapsed = status.elapsed.map(|x| x.to_owned().num_milliseconds());
         let duration = status.duration.map(|x| x.to_owned().num_milliseconds());
 
+        let queue = mpc.queue().unwrap();
         let song = SongInfo::update(&music_dir, &queue[current_pos]);
 
         let switcher_cycle = match status.nextsong.is_some() {
@@ -161,6 +157,10 @@ impl Default for Colours {
     fn default() -> Self {
         let prefix = var("XDG_CONFIG_HOME").unwrap_or_else(|_| [&var("HOME").unwrap(), ".config"].join("/"));
         let theme_path = Path::new(&[&prefix, "rinse", "theme.yaml"].join("/")).to_owned();
+        if !theme_path.exists() {
+            utils::gen_theme(&prefix)
+        }
+
         let colours: BTreeMap<String, String> =
             serde_yaml::from_str(&fs::read_to_string(theme_path).unwrap()).unwrap();
         Self {

@@ -18,7 +18,7 @@ use mpd::{Client, State, Status};
 
 use self::imp::{Rinse, Setup, SongInfo, Update};
 
-pub fn start(stuff: (Client<TcpStream>, Status)) {
+pub fn start(stuff: (Client<TcpStream>, Status, String)) {
     let options = NativeOptions {
         always_on_top:         true,
         maximized:             false,

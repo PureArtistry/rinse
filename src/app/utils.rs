@@ -1,19 +1,85 @@
-use std::{net::TcpStream, path::Path};
+use std::{
+    env::var,
+    fs::{self, File},
+    io::{BufRead, BufReader},
+    net::TcpStream,
+    path::Path
+};
 
 use anyhow::{bail, Result};
 use eframe::egui::Color32;
 use mpd::{Client, Song, Status};
 
-pub fn startup() -> Result<(Client<TcpStream>, Status)> {
+pub fn startup() -> Result<(Client<TcpStream>, Status, String)> {
+    let music_dir = find_music_dir()?;
     let mut client = get_client()?;
     let status = client.status()?;
     match status.queue_len > 1 {
-        true => Ok((client, status)),
+        true => Ok((client, status, music_dir)),
         false => bail!("Not enough songs in the queue!")
     }
 }
 
+// TODO: add support for UnixStream client, this will require some restucturing of the app
 fn get_client() -> Result<Client<TcpStream>> { Ok(Client::new(TcpStream::connect("127.0.0.1:6600")?)?) }
+
+// mpd only allows directly reading the music directory from a (local) unix socket rather than TCP :(
+pub fn find_music_dir() -> Result<String> {
+    let bail_msg = "Unable to determine music directory root!";
+
+    let prefix = var("XDG_CONFIG_HOME").unwrap_or_else(|_| [&var("HOME").unwrap(), ".config"].join("/"));
+    let mpd_conf_path = Path::new(&[&prefix, "mpd", "mpd.conf"].join("/")).to_owned();
+    let mpd_conf = File::open(mpd_conf_path)?;
+
+    for x in BufReader::new(mpd_conf).lines().flatten() {
+        if x.starts_with("music_directory") {
+            let value_vec = x.split(' ').collect::<Vec<_>>();
+            let mut value = value_vec[1].to_owned();
+            value.remove(0);
+            value.remove(value.len() - 1);
+            if value.starts_with('/') {
+                return Ok(value.to_owned())
+            }
+            else if value.starts_with('~') {
+                value.remove(0);
+                return Ok([var("HOME").unwrap(), value].join(""))
+            }
+            else {
+                bail!(bail_msg)
+            }
+        }
+    }
+    bail!(bail_msg)
+}
+
+pub fn gen_theme(path: &str) {
+    let theme = "scheme: \"Nord\"
+author: \"arcticicestudio\"
+base00: \"2E3440\"
+base01: \"3B4252\"
+base02: \"434C5E\"
+base03: \"4C566A\"
+base04: \"D8DEE9\"
+base05: \"E5E9F0\"
+base06: \"ECEFF4\"
+base07: \"8FBCBB\"
+base08: \"88C0D0\"
+base09: \"81A1C1\"
+base0A: \"5E81AC\"
+base0B: \"BF616A\"
+base0C: \"D08770\"
+base0D: \"EBCB8B\"
+base0E: \"A3BE8C\"
+base0F: \"B48EAD\"
+";
+
+    let folder = Path::new(&[path, "rinse"].join("/")).to_owned();
+    if !folder.exists() {
+        fs::create_dir(folder).expect("error: Can't create config directory!")
+    }
+    fs::write(Path::new(&[path, "rinse", "theme.yaml"].join("/")), theme)
+        .expect("error:: Can't write theme file to config directory!")
+}
 
 pub fn gen_title(song: &Song) -> String {
     match &song.title {
