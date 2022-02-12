@@ -33,7 +33,7 @@ pub fn find_music_dir() -> Result<String> {
 
     for x in BufReader::new(mpd_conf).lines().flatten() {
         if x.starts_with("music_directory") {
-            let value_vec = x.split(' ').collect::<Vec<_>>();
+            let value_vec = x.split_whitespace().collect::<Vec<_>>();
             let mut value = value_vec[1].to_owned();
             value.remove(0);
             value.remove(value.len() - 1);
